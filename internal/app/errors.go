@@ -16,6 +16,7 @@ const (
 	svcErrResourceNotFound       = "resource not found"
 	svcErrEncounteredSystemError = "encountered system error"
 	svcErrResourceConflict       = "resource state conflict"
+	svcErrNotImplemented         = "not implemented"
 )
 
 var svcErrMessagesToStatusCodes = map[string]int{
@@ -23,6 +24,7 @@ var svcErrMessagesToStatusCodes = map[string]int{
 	svcErrResourceNotFound:       http.StatusNotFound,
 	svcErrEncounteredSystemError: http.StatusInternalServerError,
 	svcErrResourceConflict:       http.StatusConflict,
+	svcErrNotImplemented:         http.StatusNotImplemented,
 }
 
 func newAppErr(errMsg string, code int) *appErr {

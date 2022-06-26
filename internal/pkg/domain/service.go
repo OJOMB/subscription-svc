@@ -31,7 +31,7 @@ func NewService(logger *logrus.Logger, repo Repo, idGen IDGenerator, taxRate dec
 }
 
 func (svc *Service) CreateProduct(ctx context.Context, p Product) (*Product, error) {
-	return nil, nil
+	return nil, fmt.Errorf("not implemented - create voucher functionality not yet available")
 }
 
 func (svc *Service) GetProducts(ctx context.Context) ([]*Product, error) {
@@ -101,6 +101,7 @@ func (svc *Service) CreateSubscriptionPlan(ctx context.Context, userID, productI
 		return nil, fmt.Errorf("encountered error - failed to retrieve product with ID '%s'", productID)
 	}
 
+	var voucherCodePtr *string
 	var discount = decimal.NewFromInt(0)
 	if voucherCode != "" {
 		voucher, err := svc.repo.GetVoucher(ctx, voucherCode)
@@ -120,9 +121,8 @@ func (svc *Service) CreateSubscriptionPlan(ctx context.Context, userID, productI
 			return nil, err
 		}
 
-		if isApplicable {
-			discount = svc.calcSubscriptionPlanDiscount(product.Price, voucher)
-		}
+		voucherCodePtr = &voucherCode
+		discount = svc.calcSubscriptionPlanDiscount(product.Price, voucher)
 	}
 
 	tax := product.Price.Mul(svc.taxRate)
@@ -142,13 +142,13 @@ func (svc *Service) CreateSubscriptionPlan(ctx context.Context, userID, productI
 		UserID:      userID,
 		ProductID:   productID,
 		Status:      SubscriptionPlanActive,
-		StartDate:   time.Now().UTC(),
-		EndDate:     time.Now().AddDate(0, 0, product.DurationDays).UTC(),
+		StartDate:   time.Now(),
+		EndDate:     time.Now().AddDate(0, 0, product.DurationDays),
 		NetPrice:    netPrice,
 		GrossPrice:  product.Price,
 		Tax:         tax,
 		Discount:    discount,
-		VoucherCode: &voucherCode,
+		VoucherCode: voucherCodePtr,
 	}
 
 	if err := svc.repo.CreateSubscriptionPlan(ctx, plan); err != nil {
@@ -187,6 +187,20 @@ func (svc *Service) calcSubscriptionPlanDiscount(price decimal.Decimal, voucher 
 	}
 
 	return price.Mul(voucher.Value.Div(decimal.NewFromInt(100))).Round(2)
+}
+
+func (svc *Service) GetSubscriptionPlan(ctx context.Context, planID string) (*SubscriptionPlan, error) {
+	if planID == "" {
+		return nil, fmt.Errorf("bad input data - subscription plan ID must not be empty")
+	}
+
+	plan, err := svc.repo.GetSubscriptionPlan(ctx, planID)
+	if err != nil {
+		svc.logger.WithField(svcMethod, "GetProduct").WithError(err).Error("repo error")
+		return nil, fmt.Errorf("encountered error - failed to retrieve product with ID '%s'", planID)
+	}
+
+	return plan, nil
 }
 
 func (svc *Service) UpdateSubscriptionPlanStatus(ctx context.Context, planID, newStatus string) error {
@@ -241,7 +255,7 @@ func (svc *Service) pauseSubscriptionPlan(ctx context.Context, plan *Subscriptio
 			return fmt.Errorf("encountered error - failed to generate valid ID for new pause record")
 		}
 
-		if err := svc.repo.PauseSubscriptionPlan(ctx, plan.ID, newPauseID); err != nil {
+		if err := svc.repo.PauseSubscriptionPlan(ctx, plan.ID, newPauseID, time.Now()); err != nil {
 			svc.logger.WithField(svcMethod, "pauseSubscriptionPlan").WithError(err).Error("repo error")
 			return fmt.Errorf("encountered error - failed to resume subscription plan with ID '%s'", plan.ID)
 		}
@@ -270,6 +284,10 @@ func (svc *Service) cancelSubscriptionPlan(ctx context.Context, plan *Subscripti
 	return nil
 }
 
+func (svc *Service) CreateUser(ctx context.Context, firstName, lastName, dob, email string) (*User, error) {
+	return nil, fmt.Errorf("not implemented - create user functionality not yet available")
+}
+
 func (svc *Service) CreateVoucher(ctx context.Context, voucher Voucher, products []Product) error {
-	return nil
+	return fmt.Errorf("not implemented - create voucher functionality not yet available")
 }

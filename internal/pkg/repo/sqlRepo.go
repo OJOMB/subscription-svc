@@ -121,7 +121,7 @@ func (r *SQlRepo) CreateSubscriptionPlan(ctx context.Context, plan domain.Subscr
 		`INSERT INTO subscription_plans
 		(id, user_id, product_id, start_date, end_date, net_price, gross_price, tax, discount, voucher_code)
 		VALUES (?,?,?,?,?,?,?,?,?,?);`,
-		plan.ID, plan.UserID, plan.ProductID, startDate, endDate, plan.NetPrice, plan.GrossPrice, plan.Tax, plan.Discount, plan.VoucherCode,
+		plan.ID, plan.UserID, plan.ProductID, &startDate, &endDate, plan.NetPrice, plan.GrossPrice, plan.Tax, plan.Discount, plan.VoucherCode,
 	); err != nil {
 		r.logger.WithError(err).WithField("method", "CreateSubscriptionPlan").Error("failed to insert subscription plan")
 		return err
@@ -152,12 +152,14 @@ func (r *SQlRepo) GetSubscriptionPlan(ctx context.Context, planID string) (*doma
 	return &plan, nil
 }
 
-func (r *SQlRepo) PauseSubscriptionPlan(ctx context.Context, planID, pauseID string) error {
+func (r *SQlRepo) PauseSubscriptionPlan(ctx context.Context, planID, pauseID string, pauseTime time.Time) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to start tx: %v", err)
 	}
 
+	// for data consistency we need to check the status is pausable (again)
+	// skipping doing so here could lead to double pauses
 	var originalStatusStr string
 	var originalEndDate time.Time
 	if err := tx.QueryRowContext(ctx, `SELECT status, end_date FROM subscription_plans WHERE id = ?`, &planID).
@@ -177,13 +179,12 @@ func (r *SQlRepo) PauseSubscriptionPlan(ctx context.Context, planID, pauseID str
 		return fmt.Errorf("cannot pause plan with status %s", oldStatus.String())
 	}
 
-	pauseTimeStamp := time.Now().UTC()
 	originalEndDateStr := originalEndDate.UTC()
 	if _, err = tx.ExecContext(
 		ctx,
 		`INSERT INTO subscription_plan_pauses (id, subscription_plan_id, pause_date, end_date_at_pause)
 		 VALUES (?, ?, ?, ?);`,
-		&pauseID, &planID, &pauseTimeStamp, &originalEndDateStr,
+		&pauseID, &planID, &pauseTime, &originalEndDateStr,
 	); err != nil {
 		tx.Rollback()
 		return fmt.Errorf("failed to create subscription plan pause record for plan with ID %s: %v", planID, err)
@@ -246,8 +247,8 @@ func (r *SQlRepo) ResumeSubscriptionPlan(ctx context.Context, planID string) err
 		return fmt.Errorf("failed to retrieve data on current pause for subscription plan with ID %s: %v", planID, err)
 	}
 
-	now := time.Now().UTC()
-	newEndDate := now.Add(pause.EndDateAtPause.Sub(pause.PauseDate)).UTC()
+	now := time.Now()
+	newEndDate := now.Add(pause.EndDateAtPause.Sub(pause.PauseDate))
 	statusActive := domain.SubscriptionPlanActive.String()
 	if _, err := tx.ExecContext(
 		ctx,

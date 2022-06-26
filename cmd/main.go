@@ -39,11 +39,15 @@ const (
 	idAlphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz-"
 )
 
-var taxRate = decimal.NewFromFloat(0.05)
+var (
+	taxRate = decimal.NewFromFloat(0.05)
+)
 
 func main() {
 	logger := logrus.New()
 	logger.SetFormatter(&logrus.JSONFormatter{})
+
+	decimal.MarshalJSONWithoutQuotes = true
 
 	version := os.Getenv(versionEnv)
 	if version == "" {
@@ -77,6 +81,7 @@ func main() {
 	var docsEnabled bool
 	if environment != "prod" {
 		logger.Info("app docs endpoint enabled")
+		// swaggerUI should not be available in prod environment
 		docsEnabled = true
 	}
 
@@ -112,6 +117,7 @@ func main() {
 
 	logger.Infof("connecting to DB @ %s:%d as %s", dbHost, dbPort, dbUser)
 
+	// default loc - so UTC
 	dbCnxnStr := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=true", dbUser, dbPassword, dbHost, dbPort, dbName)
 	db, err := sql.Open("mysql", dbCnxnStr)
 	if err != nil {

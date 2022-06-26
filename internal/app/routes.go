@@ -19,6 +19,9 @@ func (app *App) routes() {
 		app.router.PathPrefix("/docs").Handler(http.StripPrefix("/docs", fs))
 	}
 
+	// users
+	app.router.HandleFunc("/api/v1/users", app.handleCreateUser()).Methods(http.MethodPost)
+
 	// products
 	app.router.HandleFunc("/api/v1/products", app.handleGetProducts()).Methods(http.MethodGet)
 	app.router.HandleFunc(fmt.Sprintf("/api/v1/products/{%s}", urlVarProductID), app.handleGetProduct()).Methods(http.MethodGet)
@@ -26,6 +29,7 @@ func (app *App) routes() {
 
 	// subscription-plans
 	app.router.HandleFunc("/api/v1/subscription-plans", app.handleCreateSubscriptionPlan()).Methods(http.MethodPost)
+	app.router.HandleFunc(fmt.Sprintf("/api/v1/subscription-plans/{%s}", urlVarSubscriptionPlanID), app.handleGetSubscriptionPlan()).Methods(http.MethodGet)
 	app.router.HandleFunc(
 		fmt.Sprintf("/api/v1/subscription-plans/{%s}/status", urlVarSubscriptionPlanID),
 		app.handleUpdateSubscriptionPlanStatus(),
