@@ -1,5 +1,3 @@
-
-
 compile:
 	go build cmd/main.go
 
@@ -9,4 +7,4 @@ unit-test:
 
 .PHONY: integration-test
 integration-test:
-	go test
+	go test ./tests/integration/... -count=1
